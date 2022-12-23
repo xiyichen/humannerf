@@ -42,7 +42,7 @@ class SMPL():
         self.J = None
         self.R = None
 
-    def __call__(self, pose, beta):
+    def __call__(self, pose, beta, global_orient=None):
 
         v_template = self.v_template              # (6890, 3)
         shapedirs = self.shapedirs.reshape(-1,10) # (6890, 10)

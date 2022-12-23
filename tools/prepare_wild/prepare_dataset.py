@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from pathlib import Path
 sys.path.append(str(Path(os.getcwd()).resolve().parents[1]))
+from third_parties.smplx.smplx_numpy import SMPLX
 from third_parties.smpl.smpl_numpy import SMPL
 
 from absl import app
@@ -18,8 +19,13 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('cfg',
                     'wild.yaml',
                     'the path of config file')
-
-MODEL_DIR = '../../third_parties/smpl/models'
+USE_SMPLX = True
+if USE_SMPLX:
+    print('Using SMPL-X')
+    MODEL_DIR = '../../third_parties/smplx/models'
+else:
+    print('Using SMPL')
+    MODEL_DIR = '../../third_parties/smpl/models'
 
 
 def parse_config():
@@ -44,7 +50,11 @@ def main(argv):
     with open(os.path.join(subject_dir, 'metadata.json'), 'r') as f:
         frame_infos = json.load(f)
 
-    smpl_model = SMPL(sex=sex, model_dir=MODEL_DIR)
+    if USE_SMPLX:
+        model = SMPLX(sex=sex, model_dir=MODEL_DIR)
+    else:
+        model = SMPL(sex=sex, model_dir=MODEL_DIR)
+
 
     cameras = {}
     mesh_infos = {}
@@ -53,6 +63,10 @@ def main(argv):
         cam_body_info = frame_infos[frame_base_name] 
         poses = np.array(cam_body_info['poses'], dtype=np.float32)
         betas = np.array(cam_body_info['betas'], dtype=np.float32)
+        if 'global_orient' in cam_body_info:
+            global_orient = np.array(cam_body_info['global_orient'], dtype=np.float32)
+        else:
+            global_orient = None
         K = np.array(cam_body_info['cam_intrinsics'], dtype=np.float32)
         E = np.array(cam_body_info['cam_extrinsics'], dtype=np.float32)
         
@@ -62,7 +76,7 @@ def main(argv):
         # Below we tranfer the global body rotation to camera pose
 
         # Get T-pose joints
-        _, tpose_joints = smpl_model(np.zeros_like(poses), betas)
+        _, tpose_joints = model(np.zeros_like(poses), betas)
 
         # get global Rh, Th
         pelvis_pos = tpose_joints[0].copy()
@@ -70,13 +84,13 @@ def main(argv):
         Rh = poses[:3].copy()
 
         # get refined T-pose joints
-        tpose_joints = tpose_joints - pelvis_pos[None, :]
+        # tpose_joints = tpose_joints - pelvis_pos[None, :]
 
         # remove global rotation from body pose
         poses[:3] = 0
 
         # get posed joints using body poses without global rotation
-        _, joints = smpl_model(poses, betas)
+        _, joints = model(poses, betas, global_orient=global_orient)
         joints = joints - pelvis_pos[None, :]
 
         mesh_infos[frame_base_name] = {
@@ -84,6 +98,7 @@ def main(argv):
             'Th': Th,
             'poses': poses,
             'joints': joints,
+            # 'vertices': vertices,
             'tpose_joints': tpose_joints
         }
 
@@ -102,8 +117,11 @@ def main(argv):
 
     # write canonical joints
     avg_betas = np.mean(np.stack(all_betas, axis=0), axis=0)
-    smpl_model = SMPL(sex, model_dir=MODEL_DIR)
-    _, template_joints = smpl_model(np.zeros(72), avg_betas)
+    if USE_SMPLX:
+        model_canonical = SMPLX(sex=sex, model_dir=MODEL_DIR)
+    else:
+        model_canonical = SMPL(sex=sex, model_dir=MODEL_DIR)
+    _, template_joints = model_canonical(np.zeros(poses.shape[0]), avg_betas)
     with open(os.path.join(output_path, 'canonical_joints.pkl'), 'wb') as f:   
         pickle.dump(
             {

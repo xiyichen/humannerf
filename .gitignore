@@ -3,3 +3,5 @@ dataset
 dataset/
 experiments
 experiments/
+third_parties/smplx/models/smplx/*.npz
+third_parties/smpl/models/*.pkl
