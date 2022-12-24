@@ -7,7 +7,7 @@ from core.utils.network_util import initseq
 class NonRigidMotionMLP(nn.Module):
     def __init__(self,
                  pos_embed_size=3, 
-                 condition_code_size=69,
+                 condition_code_size=63,
                  mlp_width=128,
                  mlp_depth=6,
                  skips=None):
@@ -26,12 +26,12 @@ class NonRigidMotionMLP(nn.Module):
                                nn.ReLU()]
             else:
                 block_mlps += [nn.Linear(mlp_width, mlp_width), nn.ReLU()]
+            
 
         block_mlps += [nn.Linear(mlp_width, 3)]
 
         self.block_mlps = nn.ModuleList(block_mlps)
         initseq(self.block_mlps)
-
         self.layers_to_cat_inputs = layers_to_cat_inputs
 
         # init the weights of the last layer as very small value
@@ -46,6 +46,7 @@ class NonRigidMotionMLP(nn.Module):
         h = torch.cat([condition_code, pos_embed], dim=-1)
         if viewdirs is not None:
             h = torch.cat([h, viewdirs], dim=-1)
+
 
         for i in range(len(self.block_mlps)):
             if i in self.layers_to_cat_inputs:

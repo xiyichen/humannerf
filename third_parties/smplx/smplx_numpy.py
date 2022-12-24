@@ -43,6 +43,6 @@ class SMPLX():
                                        body_pose=torch.tensor(pose, device=self.device).double().reshape(1, -1),
                                        betas=torch.tensor(beta, device=self.device).double().reshape(1, -1))
         v = body_model_output.vertices.squeeze(0).detach().cpu().numpy()
-        joints = body_model_output.joints.squeeze(0).detach().cpu().numpy()[:23, :]
+        joints = body_model_output.joints.squeeze(0).detach().cpu().numpy()[:22, :]
 
         return v, joints

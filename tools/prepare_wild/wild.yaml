@@ -1,4 +1,4 @@
 dataset:
-  path: ../../dataset/wild
+  path: /cluster/scratch/xiychen/humannerf/dataset/wild/
   subject: 'monocular'
-  sex: 'neutral'
+  sex: 'male'

@@ -92,14 +92,19 @@ SMPL_PARENT = {
     1: 0, 2: 0, 3: 0, 4: 1, 5: 2, 6: 3, 7: 4, 8: 5, 9: 6, 10: 7, 
     11: 8, 12: 9, 13: 9, 14: 9, 15: 12, 16: 13, 17: 14, 18: 16, 19: 17, 20: 18, 
     21: 19, 22: 20, 23: 21}
+SMPLX_PARENT = {
+    1: 0, 2: 0, 3: 0, 4: 1, 5: 2, 6: 3, 7: 4, 8: 5, 9: 6, 10: 7, 
+    11: 8, 12: 9, 13: 9, 14: 9, 15: 12, 16: 13, 17: 14, 18: 16, 19: 17, 20: 18, 
+    21: 19}
 
 
 class MotionBasisComputer(nn.Module):
     r"""Compute motion bases between the target pose and canonical pose."""
 
-    def __init__(self, total_bones=24):
+    def __init__(self, total_bones=22, body_model_type='smplx'):
         super(MotionBasisComputer, self).__init__()
         self.total_bones = total_bones
+        self.body_model_type = body_model_type
 
     def _construct_G(self, R_mtx, T):
         r''' Tile ration matrix and translation vector to build a 4x4 matrix.
@@ -112,6 +117,7 @@ class MotionBasisComputer(nn.Module):
             G:     Tensor (B, TOTAL_BONES, 4, 4)
         '''
         batch_size, total_bones = R_mtx.shape[:2]
+        # print(total_bones, self.total_bones)
         assert total_bones == self.total_bones
 
         G = torch.zeros(size=(batch_size, total_bones, 4, 4),
@@ -140,7 +146,7 @@ class MotionBasisComputer(nn.Module):
 
         for i in range(1, self.total_bones):
             dst_gtfms[:, i, :, :] = torch.matmul(
-                                        dst_gtfms[:, SMPL_PARENT[i], 
+                                        dst_gtfms[:, SMPLX_PARENT[i] if self.body_model_type == 'smplx' else SMPL_PARENT[i], 
                                                   :, :].clone(),
                                         local_Gs[:, i, :, :])
 

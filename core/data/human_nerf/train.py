@@ -45,7 +45,8 @@ class Dataset(torch.utils.data.Dataset):
                     self.canonical_joints,   
                     self.canonical_bbox['min_xyz'],
                     self.canonical_bbox['max_xyz'],
-                    grid_size=cfg.mweight_volume.volume_size).astype('float32')
+                    grid_size=cfg.mweight_volume.volume_size,
+                    model_type=cfg.body_model_type).astype('float32')
 
 
         self.cameras = self.load_train_cameras()
@@ -382,10 +383,10 @@ class Dataset(torch.utils.data.Dataset):
 
         if 'motion_bases' in self.keyfilter:
             dst_Rs, dst_Ts = body_pose_to_body_RTs(
-                    dst_poses, dst_tpose_joints
+                    dst_poses, dst_tpose_joints, cfg.body_model_type
                 )
             cnl_gtfms = get_canonical_global_tfms(
-                            self.canonical_joints)
+                            self.canonical_joints, cfg.body_model_type)
             results.update({
                 'dst_Rs': dst_Rs,
                 'dst_Ts': dst_Ts,

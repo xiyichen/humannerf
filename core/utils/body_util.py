@@ -29,16 +29,53 @@ SMPL_JOINT_IDX = {
     'right_thumb': 23
 }
 
+SMPLX_JOINT_IDX = {
+    'pelvis_root': 0,
+    'left_hip': 1,
+    'right_hip': 2,
+    'spine1': 3,
+    'left_knee': 4,
+    'right_knee': 5,
+    'spine2': 6,
+    'left_ankle': 7,
+    'right_ankle': 8,
+    'spine3': 9,
+    'left_foot': 10,
+    'right_foot': 11,
+    'neck': 12,
+    'left_collar': 13,
+    'right_collar': 14,
+    'head': 15,
+    'left_shoulder': 16,
+    'right_shoulder': 17,
+    'left_elbow': 18,
+    'right_elbow': 19,
+    'left_wrist': 20,
+    'right_wrist': 21,
+    'jaw': 22
+}
+
 SMPL_PARENT = {
     1: 0, 2: 0, 3: 0, 4: 1, 5: 2, 6: 3, 7: 4, 8: 5, 9: 6, 10: 7, 
     11: 8, 12: 9, 13: 9, 14: 9, 15: 12, 16: 13, 17: 14, 18: 16, 19: 17, 20: 18, 
     21: 19, 22: 20, 23: 21}
 
-TORSO_JOINTS_NAME = [
+SMPLX_PARENT = {
+    1: 0, 2: 0, 3: 0, 4: 1, 5: 2, 6: 3, 7: 4, 8: 5, 9: 6, 10: 7, 
+    11: 8, 12: 9, 13: 9, 14: 9, 15: 12, 16: 13, 17: 14, 18: 16, 19: 17, 20: 18, 
+    21: 19}
+
+TORSO_JOINTS_NAME_SMPL = [
     'pelvis_root', 'belly_button', 'lower_chest', 'upper_chest', 'left_clavicle', 'right_clavicle'
 ]
-TORSO_JOINTS = [
-    SMPL_JOINT_IDX[joint_name] for joint_name in TORSO_JOINTS_NAME
+TORSO_JOINTS_SMPL = [
+    SMPL_JOINT_IDX[joint_name] for joint_name in TORSO_JOINTS_NAME_SMPL
+]
+TORSO_JOINTS_NAME_SMPLX = [
+    'pelvis_root', 'spine1', 'spine2', 'spine3', 'left_collar', 'right_collar'
+]
+TORSO_JOINTS_SMPLX = [
+    SMPLX_JOINT_IDX[joint_name] for joint_name in TORSO_JOINTS_NAME_SMPLX
 ]
 BONE_STDS = np.array([0.03, 0.06, 0.03])
 HEAD_STDS = np.array([0.06, 0.06, 0.06])
@@ -219,7 +256,7 @@ def _rvec_to_rmtx(rvec):
            (1-cos(theta))*r.dot(r.T)
 
 
-def body_pose_to_body_RTs(jangles, tpose_joints):
+def body_pose_to_body_RTs(jangles, tpose_joints, model_type='smplx'):
     r""" Convert body pose to global rotation matrix R and translation T.
     
     Args:
@@ -233,6 +270,7 @@ def body_pose_to_body_RTs(jangles, tpose_joints):
 
     jangles = jangles.reshape(-1, 3)
     total_joints = jangles.shape[0]
+    # print(tpose_joints.shape[0], total_joints)
     assert tpose_joints.shape[0] == total_joints
 
     Rs = np.zeros(shape=[total_joints, 3, 3], dtype='float32')
@@ -243,12 +281,12 @@ def body_pose_to_body_RTs(jangles, tpose_joints):
 
     for i in range(1, total_joints):
         Rs[i] = _rvec_to_rmtx(jangles[i,:])
-        Ts[i] = tpose_joints[i,:] - tpose_joints[SMPL_PARENT[i], :]
+        Ts[i] = tpose_joints[i,:] - tpose_joints[SMPLX_PARENT[i] if model_type == 'smplx' else SMPL_PARENT[i], :]
     
     return Rs, Ts
 
 
-def get_canonical_global_tfms(canonical_joints):
+def get_canonical_global_tfms(canonical_joints, model_type='smplx'):
     r""" Convert canonical joints to 4x4 global transformation matrix.
     
     Args:
@@ -264,8 +302,8 @@ def get_canonical_global_tfms(canonical_joints):
     gtfms[0] = _construct_G(np.eye(3), canonical_joints[0,:])
 
     for i in range(1, total_bones):
-        translate = canonical_joints[i,:] - canonical_joints[SMPL_PARENT[i],:]
-        gtfms[i] = gtfms[SMPL_PARENT[i]].dot(
+        translate = canonical_joints[i,:] - canonical_joints[SMPLX_PARENT[i] if model_type == 'smplx' else SMPL_PARENT[i],:]
+        gtfms[i] = gtfms[SMPLX_PARENT[i] if model_type == 'smplx' else SMPL_PARENT[i]].dot(
                             _construct_G(np.eye(3), translate))
 
     return gtfms
@@ -274,7 +312,7 @@ def get_canonical_global_tfms(canonical_joints):
 def approx_gaussian_bone_volumes(
     tpose_joints, 
     bbox_min_xyz, bbox_max_xyz,
-    grid_size=32):
+    grid_size=32, model_type='smplx'):
     r""" Compute approximated Gaussian bone volume.
     
     Args:
@@ -299,16 +337,17 @@ def approx_gaussian_bone_volumes(
         gaussian_volume = np.zeros(shape=grid_shape, dtype='float32')
 
         is_parent_joint = False
-        for bone_idx, parent_idx in SMPL_PARENT.items():
+        items = SMPLX_PARENT.items() if model_type == 'smplx' else SMPL_PARENT.items()
+        for bone_idx, parent_idx in items:
             if joint_idx != parent_idx:
                 continue
 
             S = _std_to_scale_mtx(BONE_STDS * 2.)
-            if joint_idx in TORSO_JOINTS:
+            if (model_type == 'smplx' and joint_idx in TORSO_JOINTS_SMPLX) or (model_type == 'smpl' and joint_idx in TORSO_JOINTS_SMPL):
                 S[0][0] *= 1/1.5
                 S[2][2] *= 1/1.5
 
-            start_joint = tpose_joints[SMPL_PARENT[bone_idx]]
+            start_joint = tpose_joints[SMPLX_PARENT[bone_idx] if model_type == 'smplx' else SMPL_PARENT[bone_idx]]
             end_joint = tpose_joints[bone_idx]
             target_bone = (end_joint - start_joint)[None, :]
 
@@ -327,7 +366,10 @@ def approx_gaussian_bone_volumes(
 
         if not is_parent_joint:
             # The joint is not other joints' parent, meaning it is an end joint
-            joint_stds = HEAD_STDS if joint_idx == SMPL_JOINT_IDX['head'] else JOINT_STDS
+            if model_type == 'smplx':
+                joint_stds = HEAD_STDS if joint_idx == SMPLX_JOINT_IDX['head'] else JOINT_STDS
+            else:
+                joint_stds = HEAD_STDS if joint_idx == SMPL_JOINT_IDX['head'] else JOINT_STDS
             S = _std_to_scale_mtx(joint_stds * 2.)
 
             center = tpose_joints[joint_idx]

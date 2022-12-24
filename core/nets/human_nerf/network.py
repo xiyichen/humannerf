@@ -19,7 +19,8 @@ class Network(nn.Module):
 
         # motion basis computer
         self.motion_basis_computer = MotionBasisComputer(
-                                        total_bones=cfg.total_bones)
+                                        total_bones=cfg.total_bones,
+                                        body_model_type=cfg.body_model_type)
 
         # motion weight volume
         self.mweight_vol_decoder = load_mweight_vol_decoder(cfg.mweight_volume.module)(
