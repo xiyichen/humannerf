@@ -35,6 +35,17 @@ class DatasetArgs(object):
                 "ray_shoot_mode": 'image',
                 "src_type": 'wild'
             },
+            "egobody_600_train": {
+                "dataset_path": 'dataset/wild/egobody_600',
+                "keyfilter": cfg.train_keyfilter,
+                "ray_shoot_mode": cfg.train.ray_shoot_mode,
+            },
+            "egobody_600_test": {
+                "dataset_path": 'dataset/wild/egobody_600',  
+                "keyfilter": cfg.test_keyfilter,
+                "ray_shoot_mode": 'image',
+                "src_type": 'wild'
+            },
         })
 
 

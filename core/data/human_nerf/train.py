@@ -405,7 +405,7 @@ class Dataset(torch.utils.data.Dataset):
                 'cnl_bbox_max_xyz': max_xyz,
                 'cnl_bbox_scale_xyz': 2.0 / (max_xyz - min_xyz)
             })
-            assert np.all(results['cnl_bbox_scale_xyz'] >= 0)
+            # assert np.all(results['cnl_bbox_scale_xyz'] >= 0)
 
         if 'dst_posevec_69' in self.keyfilter:
             # 1. ignore global orientation

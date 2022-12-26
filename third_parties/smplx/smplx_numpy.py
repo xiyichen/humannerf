@@ -34,13 +34,12 @@ class SMPLX():
                         dtype=torch.float64)
         self.model = smplx.create(**model_params)
 
-    def __call__(self, pose, beta, global_orient=None):
-        o = None
-        if global_orient is not None:
-            o = torch.tensor(global_orient, device=self.device).double().reshape(1, -1)
+    def __call__(self, pose, beta):
+        # print(torch.tensor(pose[:3], device=self.device).double().reshape(1, -1))
+        # print(torch.tensor(pose[3:], device=self.device).double().reshape(1, -1))
         body_model_output = self.model(return_verts=True,
-                                       global_orient=o,
-                                       body_pose=torch.tensor(pose, device=self.device).double().reshape(1, -1),
+                                       global_orient=torch.tensor(pose[:3], device=self.device).double().reshape(1, -1),
+                                       body_pose=torch.tensor(pose[3:], device=self.device).double().reshape(1, -1),
                                        betas=torch.tensor(beta, device=self.device).double().reshape(1, -1))
         v = body_model_output.vertices.squeeze(0).detach().cpu().numpy()
         joints = body_model_output.joints.squeeze(0).detach().cpu().numpy()[:22, :]

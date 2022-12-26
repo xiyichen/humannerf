@@ -170,7 +170,7 @@ class Trainer(object):
 
             is_reload_model = False
             if self.iter in [100, 300, 1000, 2500] or \
-                self.iter % cfg.progress.dump_interval == 0:
+                (self.iter % cfg.progress.dump_interval == 0 and self.iter != 0):
                 is_reload_model = self.progress()
 
             if not is_reload_model:
@@ -240,19 +240,19 @@ class Trainer(object):
             images.append(np.concatenate([rendered, truth], axis=1))
 
              # check if we create empty images (only at the begining of training)
-            if self.iter <= 5000 and \
-                np.allclose(rendered, np.array(cfg.bgcolor), atol=5.):
-                is_empty_img = True
-                break
+            # if self.iter <= 5000 and \
+            #     np.allclose(rendered, np.array(cfg.bgcolor), atol=5.):
+            #     is_empty_img = True
+            #     break
 
         tiled_image = tile_images(images)
         
         Image.fromarray(tiled_image).save(
             os.path.join(cfg.logdir, "prog_{:06}.jpg".format(self.iter)))
 
-        if is_empty_img:
-            print("Produce empty images; reload the init model.")
-            self.load_ckpt('init')
+        # if is_empty_img:
+        #     print("Produce empty images; reload the init model.")
+        #     self.load_ckpt('init')
             
         self.progress_end()
 

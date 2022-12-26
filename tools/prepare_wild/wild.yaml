@@ -1,4 +1,6 @@
 dataset:
-  path: /cluster/scratch/xiychen/humannerf/dataset/wild/
-  subject: 'monocular'
+  path: ../../dataset/wild
+  subject: 'egobody_600'
   sex: 'male'
+  use_smplx: True
+  fitting_method: 'smplify-x-partial'
